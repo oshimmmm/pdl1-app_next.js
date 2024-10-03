@@ -16,11 +16,16 @@ interface ApiResult {
 }
 
 const SearchApp: React.FC = () => {
+  // ユーザーが入力したqueryを保存するための状態管理
   const [query, setQuery] = useState<string>(''); // queryの型をstringに指定
+  // localResultの入力値を保存して状態管理
   const [localResult, setLocalResult] = useState<string>(''); // localResultの型をstringに指定
+  // APIからの結果を保存。初期値はnullでAPIレスポンスがあればMatchedContentが入る。
   const [apiResult, setApiResult] = useState<MatchedContent | null>(null); // apiResultはMatchedContentかnull
 
   const handleSearch = async () => {
+    // handleSearchの前半
+    // 入力されたqueryによってoutputを変える
     let output = '';
     switch (query) {
       case '22C3':
@@ -37,15 +42,19 @@ const SearchApp: React.FC = () => {
         output = '関連する情報が見つかりませんでした';
     }
 
+    // outputの変更を検知して更新
     setLocalResult(output);
 
+    // api/searchにリクエスト（POST）を送信。リクエストボディにはqueryとlocalResult
     const response = await fetch(`/api/search`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ query, localResult: output }),
     });
 
+    // APIから帰ってきたレスポンスを取得
     const data: ApiResult = await response.json(); // レスポンスを型に基づいて取得
+    // APIレスポンス（data）にmatchedContentがあればその内容をapiResultにセット
     setApiResult(data.matchedContent ? data.matchedContent : null); // 型をチェックしてapiResultにセット
   };
 
