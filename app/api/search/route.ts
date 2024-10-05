@@ -20,6 +20,7 @@ export async function POST(req: NextRequest) {
   const { query, localResult }: { query: string; localResult: string } = await req.json();
 
   const url = 'https://www.pmda.go.jp/review-services/drug-reviews/review-information/p-drugs/0028.html';
+  const comUrl = 'https://www.pmda.go.jp/review-services/drug-reviews/review-information/cd/0001.html';
 
   try {
     // urlに対してHTTP GETリクエストを送信し、HTMLコンテンツ取得して{data}へ格納
@@ -96,6 +97,7 @@ export async function POST(req: NextRequest) {
           title: liText,
           pdfLinks: pdfLinks,
         };
+        console.log("matchedContent:", matchedContent);
       }
     }).get(); // get() で配列に変換
 
@@ -106,8 +108,43 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: '該当する内容が見つかりませんでした' }, { status: 404 });
     }
 
+    const { data: comData } = await axios.get(comUrl);
+    const $com = cheerio.load(comData);
+
+    // 3. comUrlページ内で最初のPDFリンクを取得（仮定として最初のリンク）
+    const firstPdfHref = $com('a[href$=".pdf"]').first().attr('href');
+    if (!firstPdfHref) {
+      return NextResponse.json({ message: 'comUrl内にPDFリンクが見つかりませんでした' }, { status: 404 });
+    }
+
+    const firstPdfLink = new URL(firstPdfHref, comUrl).href;
+
+    // 4. PDFを解析し、localResultを含む前後100文字を抽出
+    try {
+      const pdfResponse = await axios.get(firstPdfLink, { responseType: 'arraybuffer' });
+      const pdfBuffer = Buffer.from(pdfResponse.data);
+      const parsedPdf = await pdfParse(pdfBuffer);
+      const pdfText = parsedPdf.text;
+
+      const localResultIndex = pdfText.indexOf(localResult);
+      console.log("pdfText:", pdfText);
+      let extractedContent = '';
+      if (localResultIndex !== -1) {
+        const start = Math.max(0, localResultIndex - 500);
+        const end = localResultIndex;
+        extractedContent = pdfText.slice(start, end);
+      } else {
+        extractedContent = 'localResultに一致する内容が見つかりませんでした';
+      }
+      
+
     // matchedContentをクライアントに返す
-    return NextResponse.json({ matchedContent });
+    return NextResponse.json({ matchedContent, extractedContent });
+
+  } catch (comPdfError) {
+    console.error(`comUrl内のPDFの解析中にエラーが発生しました: ${comPdfError}`);
+    return NextResponse.json({ message: 'comUrl内のPDF解析中にエラーが発生しました' }, { status: 500 });
+  }
 
   } catch (error) {
     console.error(error);

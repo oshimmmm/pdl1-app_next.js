@@ -43,7 +43,12 @@
 }
 
 .resultItem {
-    margin: 20px 0;
+    margin: 30px 0;
+    display: flex;
+    flex-direction: column; /* 子要素を縦に並べる */
+    justify-content: center; /* 水平方向に中央揃え */
+    align-items: center;     /* 垂直方向に中央揃え */
+    text-align: center;      /* テキストも中央揃え */
 }
 
 .link {
@@ -53,4 +58,5 @@
 
 .pdfContent {
     text-align: center;
+    max-width: 600px;
 }
