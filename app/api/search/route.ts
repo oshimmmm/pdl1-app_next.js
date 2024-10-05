@@ -127,7 +127,7 @@ export async function POST(req: NextRequest) {
       const pdfText = parsedPdf.text;
 
       const localResultIndex = pdfText.indexOf(localResult);
-      console.log("pdfText:", pdfText);
+
       let extractedContent = '';
       if (localResultIndex !== -1) {
         const start = Math.max(0, localResultIndex - 500);
