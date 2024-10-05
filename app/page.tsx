@@ -1,10 +1,13 @@
 "use client"
 
 import React, { useState, ChangeEvent } from 'react';
+import styles from '../app/style/style.module.css'
 
 // ApiResultの型を修正してmatchedContentを含むように定義
 interface PdfLink {
   text: string;
+  href: string;
+  pdfContent: string;
 }
 
 interface MatchedContent {
@@ -24,6 +27,7 @@ const SearchApp: React.FC = () => {
   const [apiResult, setApiResult] = useState<MatchedContent | null>(null); // apiResultはMatchedContentかnull
 
   const handleSearch = async () => {
+    
     // handleSearchの前半
     // 入力されたqueryによってoutputを変える
     let output = '';
@@ -58,38 +62,50 @@ const SearchApp: React.FC = () => {
     setApiResult(data.matchedContent ? data.matchedContent : null); // 型をチェックしてapiResultにセット
   };
 
+  // 入力フィールド
+  // e. target.valueは入力フィールドに入力された値
+  // 入力されている値の変更を検知して更新
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     setQuery(e.target.value); // 型定義されたイベントを使って入力を処理
   };
 
   return (
-    <div>
+    <div className={styles.container}>
       <input 
         type="text" 
         value={query}
         onChange={handleInputChange}
         placeholder="クローンを入力してください" 
+        className={styles.inputField}
       />
-      <button onClick={handleSearch}>検索</button>
+      <button onClick={handleSearch} className={styles.searchButton}>検索</button>
       <div>
-        <h3>薬剤：</h3>
-        <pre>{localResult}</pre>
+        <h3 className={styles.title}>薬剤：</h3>
+        <pre className={styles.result}>{localResult}</pre>
       </div>
 
       <div>
-        <h3>詳細:</h3>
-        <div>
+        <h3 className={styles.title}>詳細:</h3>
+        <div className={styles.resultContainer}>
           {apiResult ? (
-            <ul>
+            <ul className={styles.resultList}>
               {apiResult.pdfLinks.map((link, index) => (
-                <li key={index}>{link.text}</li>
+                <li key={index} className={styles.resultItem}>
+                  {/* PDFリンクをクリック可能にする */}
+                  <a href={link.href} target="_blank" rel="noopener noreferrer" className={styles.link}>
+                    {link.text}
+                  </a>
+                  {/* PDFの内容を表示 */}
+                  <p className={styles.pdfContent}>{link.pdfContent}</p>
+                </li>
               ))}
             </ul>
           ) : (
-            <pre>関連する情報が見つかりませんでした</pre>
+            <pre className={styles.result}>関連する情報が見つかりませんでした</pre>
           )}
         </div>
       </div>
+
     </div>
   );
 };

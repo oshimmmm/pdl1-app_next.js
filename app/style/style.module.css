@@ -1,0 +1,56 @@
+.container {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    text-align: center;
+}
+
+.inputField {
+    border: 2px solid #333; /* 外枠表示 */
+    border-radius: 4px; /*角を丸く*/
+    padding: 8px;
+    width: 300px; /*入力フィールドの幅*/
+}
+
+.searchButton {
+    margin: 10px;
+    padding: 10px;
+    font-size: 12px;
+    border: 2px solid blue;
+    border-radius: 4px;
+    background-color: blue;
+    color: aliceblue;
+}
+
+.title {
+    margin-top: 20px;
+    font-size: 18px;
+}
+
+.resultContainer {
+    margin: 29px 0;
+    display: flex;
+    justify-content: center; /* 横方向の中央揃え */
+    align-items: flex-start; /* 縦方向は上部揃え */
+    min-height: 50vh;        /* 高さを50%にして中央揃え */
+}
+
+.resultList {
+    list-style-type: none;
+    padding: 0;
+}
+
+.resultItem {
+    margin: 20px 0;
+}
+
+.link {
+    font-weight: bold;
+    color: blue;
+}
+
+.pdfContent {
+    text-align: center;
+}
