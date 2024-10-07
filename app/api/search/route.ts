@@ -14,8 +14,23 @@ interface MatchedContent {
   pdfLinks: PdfLink[];
 }
 
+export async function OPTIONS() {
+  const headers = new Headers();
+  headers.set('Access-Control-Allow-Origin', '*'); // 全てのオリジンを許可
+  headers.set('Access-Control-Allow-Methods', 'POST, GET, OPTIONS'); // 許可するメソッド
+  headers.set('Access-Control-Allow-Headers', 'Content-Type'); // 許可するヘッダー
+
+  return new Response(null, { headers });
+}
+
 // POSTメソッドを作る
 export async function POST(req: NextRequest) {
+
+  const headers = new Headers();
+  headers.set('Access-Control-Allow-Origin', '*'); // どこからのリクエストも許可
+  headers.set('Access-Control-Allow-Methods', 'POST, GET, OPTIONS'); // 許可するメソッド
+  headers.set('Access-Control-Allow-Headers', 'Content-Type'); // 許可するヘッダー
+
   // await req.json()でリクエストボディを取得。リクエストボディからqueryとlocalResultを抽出
   const { query, localResult }: { query: string; localResult: string } = await req.json();
 
@@ -136,7 +151,6 @@ export async function POST(req: NextRequest) {
       } else {
         extractedContent = 'localResultに一致する内容が見つかりませんでした';
       }
-      
 
     // matchedContentをクライアントに返す
     return NextResponse.json({ matchedContent, extractedContent });
