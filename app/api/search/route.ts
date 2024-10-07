@@ -2,11 +2,12 @@ import axios from 'axios';
 import * as cheerio from 'cheerio';
 import { NextRequest, NextResponse } from 'next/server';
 import pdfParse from 'pdf-parse';
+import { processingResults } from './dataStore';
 
-interface PdfLink {
+export interface PdfLink {
   text: string;
   href: string;
-  pdfContent?: string; // PDF内容の一部を保持するプロパティを追加
+  pdfContent?: string;
 }
 
 interface MatchedContent {
@@ -14,155 +15,93 @@ interface MatchedContent {
   pdfLinks: PdfLink[];
 }
 
-export async function OPTIONS() {
-  const headers = new Headers();
-  headers.set('Access-Control-Allow-Origin', '*'); // 全てのオリジンを許可
-  headers.set('Access-Control-Allow-Methods', 'POST, GET, OPTIONS'); // 許可するメソッド
-  headers.set('Access-Control-Allow-Headers', 'Content-Type'); // 許可するヘッダー
-
-  return new Response(null, { headers });
-}
-
-// POSTメソッドを作る
-export async function POST(req: NextRequest) {
-
-  const headers = new Headers();
-  headers.set('Access-Control-Allow-Origin', '*'); // どこからのリクエストも許可
-  headers.set('Access-Control-Allow-Methods', 'POST, GET, OPTIONS'); // 許可するメソッド
-  headers.set('Access-Control-Allow-Headers', 'Content-Type'); // 許可するヘッダー
-
-  // await req.json()でリクエストボディを取得。リクエストボディからqueryとlocalResultを抽出
-  const { query, localResult }: { query: string; localResult: string } = await req.json();
-
-  const url = 'https://www.pmda.go.jp/review-services/drug-reviews/review-information/p-drugs/0028.html';
-  const comUrl = 'https://www.pmda.go.jp/review-services/drug-reviews/review-information/cd/0001.html';
-
-  try {
-    // urlに対してHTTP GETリクエストを送信し、HTMLコンテンツ取得して{data}へ格納
-    const { data } = await axios.get(url, {
-      // URLのクエリパラメータとしてqにqueryを設定（無しでも良い）
-      params: { q: query },
-      timeout: 10000 // タイムアウトを10秒に設定
-    });
-
-    // 取得したHTMLデータを解析し$として操作できるようにする
-    const $ = cheerio.load(data);
-    let matchedContent: MatchedContent | null = null;
-
-    // 'li' 要素ごとに非同期処理を行うために map を使用
-    // $('li')で、ページ内の全ての<li>タグを選択。各リンクタグに対して下の処理を実行。
-    // indexは要素のインデックス番号でelementは現在のリンクタグ要素
-    const liElements = $('li').map(async (index, element) => {
-      // 現在のリンクタグ要素のテキストを取得し、.trim()で前後の不要な空白を削除
-      const liText = $(element).text().trim();
-
-
-      if (liText.includes(localResult)) {
-        // マッチしたリンクタグ要素の1番近い親の<table>タグ要素を取得
-        const table = $(element).closest('table');
-
-        const pdfLinks: PdfLink[] = [];
-
-        // table内の各 'a' 要素ごとに非同期処理を行うために map を使用し、Promise.all で待つ
-        const linkPromises = table.find('a').map(async (i, el) => {
-          const linkText = $(el).text().trim();
-          // aタグのhref属性（リンクURL）を取得。
-          const linkHref = new URL($(el).attr('href') ?? '', url).href; // linkHrefがundefinedの場合は空の文字列を使用
-
-          try {
-            // PDFデータを取得
-            const pdfResponse = await axios.get(linkHref, { responseType: 'arraybuffer' });
-            const pdfBuffer = Buffer.from(pdfResponse.data);
-
-            // PDFを解析してテキストを抽出
-            const parsedPdf = await pdfParse(pdfBuffer);
-            const pdfText = parsedPdf.text;
-
-            // 「対象となる効能又は効果」の部分を探して、その前後のテキストを抽出
-            const keyword = '対象となる効能又は効果';
-            const nextKeyword = '対象となる用法及び用量';
-
-            const keywordIndex = pdfText.indexOf(keyword);
-            const nextKeywordIndex = pdfText.indexOf(nextKeyword);
-
-            let pdfContent = '';
-
-            if (keywordIndex !== -1 && nextKeywordIndex !== -1 && nextKeywordIndex > keywordIndex) {
-              pdfContent = pdfText.slice(keywordIndex + keyword.length, nextKeywordIndex);
-            } else if (keywordIndex !== -1) {
-            // nextKeywordが見つからなかった場合、keyword以降の150文字を抽出
-              pdfContent = pdfText.slice(keywordIndex, keywordIndex + 150);
-            }
-
-            pdfLinks.push({
-              text: linkText,
-              href: linkHref,
-              pdfContent: pdfContent || '対象の内容が見つかりませんでした', // PDFの内容を追加
-            });
-
-          } catch (pdfError) {
-            console.error(`PDFの解析中にエラーが発生しました: ${pdfError}`);
-
-          }
-        }).get(); // get() で配列に変換
-
-        // すべてのリンクの処理が完了するのを待つ
-        await Promise.all(linkPromises);
-
-        matchedContent = {
-          title: liText,
-          pdfLinks: pdfLinks,
-        };
-        console.log("matchedContent:", matchedContent);
-      }
-    }).get(); // get() で配列に変換
-
-    // すべての li 要素の処理が完了するのを待つ
-    await Promise.all(liElements);
-
-    if (!matchedContent) {
-      return NextResponse.json({ message: '該当する内容が見つかりませんでした' }, { status: 404 });
-    }
-
-    const { data: comData } = await axios.get(comUrl);
-    const $com = cheerio.load(comData);
-
-    // 3. comUrlページ内で最初のPDFリンクを取得（仮定として最初のリンク）
-    const firstPdfHref = $com('a[href$=".pdf"]').first().attr('href');
-    if (!firstPdfHref) {
-      return NextResponse.json({ message: 'comUrl内にPDFリンクが見つかりませんでした' }, { status: 404 });
-    }
-
-    const firstPdfLink = new URL(firstPdfHref, comUrl).href;
-
-    // 4. PDFを解析し、localResultを含む前後100文字を抽出
+// バックグラウンドでPDF解析を行う関数
+async function processPDFLinks( queryKey: string, pdfLinks: PdfLink[]) {
+  for (const link of pdfLinks) {
     try {
-      const pdfResponse = await axios.get(firstPdfLink, { responseType: 'arraybuffer' });
+      const pdfResponse = await axios.get(link.href, { responseType: 'arraybuffer' });
       const pdfBuffer = Buffer.from(pdfResponse.data);
       const parsedPdf = await pdfParse(pdfBuffer);
-      const pdfText = parsedPdf.text;
 
-      const localResultIndex = pdfText.indexOf(localResult);
+      const keyword = '対象となる効能又は効果';
+      const nextKeyword = '対象となる用法及び用量';
+      const keywordIndex = parsedPdf.text.indexOf(keyword);
+      const nextKeywordIndex = parsedPdf.text.indexOf(nextKeyword);
 
-      let extractedContent = '';
-      if (localResultIndex !== -1) {
-        const start = Math.max(0, localResultIndex - 500);
-        const end = localResultIndex;
-        extractedContent = pdfText.slice(start, end);
-      } else {
-        extractedContent = 'localResultに一致する内容が見つかりませんでした';
+      let pdfContent = '';
+      if (keywordIndex !== -1 && nextKeywordIndex > keywordIndex) {
+        pdfContent = parsedPdf.text.slice(keywordIndex + keyword.length, nextKeywordIndex);
+      } else if (keywordIndex !== -1) {
+        pdfContent = parsedPdf.text.slice(keywordIndex, keywordIndex + 150);
       }
 
-    // matchedContentをクライアントに返す
-    return NextResponse.json({ matchedContent, extractedContent });
-
-  } catch (comPdfError) {
-    console.error(`comUrl内のPDFの解析中にエラーが発生しました: ${comPdfError}`);
-    return NextResponse.json({ message: 'comUrl内のPDF解析中にエラーが発生しました' }, { status: 500 });
+      link.pdfContent = pdfContent || '内容が見つかりませんでした';
+    } catch (error) {
+      console.error('PDF解析エラー:', error);
+    }
   }
+  // 解析完了後、結果をデータストアに保存
+  processingResults.set(queryKey, { pdfLinks });
+}
 
+export async function POST(req: NextRequest) {
+  const headers = new Headers();
+  headers.set('Access-Control-Allow-Origin', '*');
+  headers.set('Access-Control-Allow-Methods', 'POST, GET, OPTIONS');
+  headers.set('Access-Control-Allow-Headers', 'Content-Type');
+
+  try {
+    const { query, localResult } = await req.json();
+    const queryKey = `${query}-${localResult}`; // 一意なキーを生成
+
+    // クイックレスポンスのためにHTMLコンテンツの取得と解析のみ行う
+    const { data } = await axios.get('https://www.pmda.go.jp/review-services/drug-reviews/review-information/p-drugs/0028.html', {
+      params: { q: query },
+      timeout: 10000 // タイムアウトの設定
+    });
+
+    const $ = cheerio.load(data);
+    let matchedContent: MatchedContent = { title: '', pdfLinks: [] };
+
+    // HTML解析を実行し、結果を返す
+    const liElements = $('li').map((index, element) => {
+      const liText = $(element).text().trim();
+      if (liText.includes(localResult)) {
+        const table = $(element).closest('table');
+        const pdfLinks: PdfLink[] = [];
+
+        table.find('a').each((i, el) => {
+          const linkText = $(el).text().trim();
+          const linkHref = new URL($(el).attr('href') ?? '', 'https://www.pmda.go.jp').href;
+          pdfLinks.push({ text: linkText, href: linkHref });
+        });
+
+        matchedContent = { title: liText, pdfLinks };
+        console.log("matchedContent", matchedContent);
+      }
+    }).get();
+
+    await Promise.all(liElements);
+
+    // クイックレスポンスとして解析結果を一旦返す
+    if (matchedContent) {
+
+      processingResults.set(queryKey, matchedContent);
+      // クライアントに迅速にレスポンスを返す
+      // returnをつけて早期にレスポンスを終了させる
+      const response = NextResponse.json({ matchedContent }, { headers });
+
+      // その後、バックグラウンドでPDF解析を非同期で実行
+      processPDFLinks(queryKey, matchedContent.pdfLinks); // 非同期で処理を進める
+
+      return response; // レスポンスを返す
+    } else {
+      // マッチする内容がなかった場合、404レスポンスを返す
+      return NextResponse.json({ message: '該当する内容が見つかりませんでした' }, { status: 404, headers });
+    }
   } catch (error) {
-    console.error(error);
-    return NextResponse.json({ message: 'エラーが発生しました' }, { status: 500 });
+    // エラーハンドリング。サーバーエラーを返す
+    console.error('サーバーエラー:', error);
+    return NextResponse.json({ message: 'サーバーエラーが発生しました' }, { status: 500, headers });
   }
 }

@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, ChangeEvent } from 'react';
+import React, { useState, ChangeEvent, useEffect } from 'react';
 import styles from '../app/style/style.module.css'
 
 // ApiResultの型を修正してmatchedContentを含むように定義
@@ -25,10 +25,14 @@ const SearchApp: React.FC = () => {
   const [localResult, setLocalResult] = useState<string>(''); // localResultの型をstringに指定
   // APIからの結果を保存。初期値はnullでAPIレスポンスがあればMatchedContentが入る。
   const [apiResult, setApiResult] = useState<MatchedContent | null>(null); // apiResultはMatchedContentかnull
+  const [isProcessing, setIsProcessing] = useState<boolean>(false); // PDF解析中かどうかのフラグ
+  const [pollingActive, setPollingActive] = useState<boolean>(false); // ポーリングが有効かどうか
 
   const handleSearch = async () => {
-    
-    // handleSearchの前半
+    setIsProcessing(true); // 解析中の状態を設定
+    setPollingActive(false); // 新しい検索時にはポーリングを無効にする
+    setApiResult(null); // 検索結果をリセット
+
     // 入力されたqueryによってoutputを変える
     let output = '';
     switch (query) {
@@ -58,16 +62,46 @@ const SearchApp: React.FC = () => {
 
     // APIから帰ってきたレスポンスを取得
     const data: ApiResult = await response.json(); // レスポンスを型に基づいて取得
-    // APIレスポンス（data）にmatchedContentがあればその内容をapiResultにセット
-    setApiResult(data.matchedContent ? data.matchedContent : null); // 型をチェックしてapiResultにセット
+
+    // 初期の検索結果を表示
+    setApiResult(data.matchedContent ? data.matchedContent : null);
+    setIsProcessing(false); // 解析終了
+    setPollingActive(true); // ポーリング開始（詳細解析用）
   };
 
   // 入力フィールド
-  // e. target.valueは入力フィールドに入力された値
-  // 入力されている値の変更を検知して更新
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     setQuery(e.target.value); // 型定義されたイベントを使って入力を処理
   };
+
+  // PDF解析が完了しているかどうかを確認するポーリング処理
+  useEffect(() => {
+    if (!pollingActive || !apiResult) return;
+
+    // 解析結果を数秒ごとに再確認する
+    const interval = setInterval(async () => {
+      const response = await fetch(`/api/search/status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query, localResult }),
+      });
+
+      if (response.ok) {
+        const data: ApiResult = await response.json();
+        if (data.matchedContent) {
+          setApiResult(data.matchedContent); // 新しい解析結果を更新
+          setPollingActive(false); // ポーリングを停止
+        }
+      } else if (response.status === 202) {
+        // 解析中なので、特に何もしない
+      } else {
+        console.error('エラーが発生しました:', response.statusText);
+        setPollingActive(false); // エラー時はポーリングを停止
+      }
+    }, 5000);
+  
+    return () => clearInterval(interval);
+  }, [pollingActive, apiResult, query, localResult]);
 
   return (
     <div className={styles.container}>
@@ -79,10 +113,14 @@ const SearchApp: React.FC = () => {
         className={styles.inputField}
       />
       <button onClick={handleSearch} className={styles.searchButton}>検索</button>
+
       <div>
         <h3 className={styles.title}>薬剤：</h3>
         <pre className={styles.result}>{localResult}</pre>
       </div>
+
+      {/* 解析中の状態を表示 */}
+      {isProcessing && <p className={styles.processing}>解析中...</p>}
 
       <div>
         <h3 className={styles.title}>詳細:</h3>
@@ -105,7 +143,6 @@ const SearchApp: React.FC = () => {
           )}
         </div>
       </div>
-
     </div>
   );
 };
