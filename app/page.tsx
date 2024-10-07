@@ -50,7 +50,7 @@ const SearchApp: React.FC = () => {
     setLocalResult(output);
 
     // api/searchにリクエスト（POST）を送信。リクエストボディにはqueryとlocalResult
-    const response = await fetch("https://pdl1-app-next-qkhy7n1of-oshimmmms-projects.vercel.app/api/search", {
+    const response = await fetch("https://pdl1-app-next-js.vercel.app/api/search", {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ query, localResult: output }),
