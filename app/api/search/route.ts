@@ -41,7 +41,8 @@ export async function POST(req: NextRequest) {
     // urlに対してHTTP GETリクエストを送信し、HTMLコンテンツ取得して{data}へ格納
     const { data } = await axios.get(url, {
       // URLのクエリパラメータとしてqにqueryを設定（無しでも良い）
-      params: { q: query }
+      params: { q: query },
+      timeout: 10000 // タイムアウトを10秒に設定
     });
 
     // 取得したHTMLデータを解析し$として操作できるようにする
