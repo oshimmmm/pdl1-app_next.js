@@ -1,3 +1,6 @@
+// PDF解析が完了しているか確認するAPI
+// 解析完了していれば解析済のデータを返す。未完了なら解析中として202ステータス返す。
+
 import { NextRequest, NextResponse } from 'next/server';
 import { processingResults } from '../dataStore';
 

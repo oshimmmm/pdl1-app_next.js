@@ -76,6 +76,7 @@ const SearchApp: React.FC = () => {
 
   // PDF解析が完了しているかどうかを確認するポーリング処理
   useEffect(() => {
+    // pollingActiveがtrueの間、定期的に/api/search/statusにリクエストを送信する。
     if (!pollingActive || !apiResult) return;
 
     // 解析結果を数秒ごとに再確認する

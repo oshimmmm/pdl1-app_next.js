@@ -19,7 +19,13 @@ interface MatchedContent {
 async function processPDFLinks( queryKey: string, pdfLinks: PdfLink[]) {
   for (const link of pdfLinks) {
     try {
-      const pdfResponse = await axios.get(link.href, { responseType: 'arraybuffer' });
+      const pdfResponse = await axios.get(link.href, { 
+        responseType: 'arraybuffer',
+        timeout: 20000,
+        headers: {
+        'Connection': 'close'  // keep-aliveを無効にする
+        }
+      });
       const pdfBuffer = Buffer.from(pdfResponse.data);
       const parsedPdf = await pdfParse(pdfBuffer);
 
@@ -40,7 +46,7 @@ async function processPDFLinks( queryKey: string, pdfLinks: PdfLink[]) {
       console.error('PDF解析エラー:', error);
     }
   }
-  // 解析完了後、結果をデータストアに保存
+  // 解析完了後、pdfContentとしてpdfLinkへ保存、processingResultsに更新された結果を保存
   processingResults.set(queryKey, { pdfLinks });
 }
 
@@ -52,25 +58,34 @@ export async function POST(req: NextRequest) {
 
   try {
     const { query, localResult } = await req.json();
-    const queryKey = `${query}-${localResult}`; // 一意なキーを生成
+    const queryKey = `${query}-${localResult}`; // データストア（processingResults）で使用するために、一意なキーを生成
 
     // クイックレスポンスのためにHTMLコンテンツの取得と解析のみ行う
     const { data } = await axios.get('https://www.pmda.go.jp/review-services/drug-reviews/review-information/p-drugs/0028.html', {
-      params: { q: query },
-      timeout: 10000 // タイムアウトの設定
+      params: { q: query }
     });
 
+    // cheerioで取得したHTMLを操作できるように。
     const $ = cheerio.load(data);
+
     let matchedContent: MatchedContent = { title: '', pdfLinks: [] };
 
     // HTML解析を実行し、結果を返す
+    // 取得したHTMLの中で<li>タグを選択。
     const liElements = $('li').map((index, element) => {
+      // elementは現在の<li>タグ
+      // それぞれの<li>タグのテキストを取得
       const liText = $(element).text().trim();
+
+      // localResultを含む<li>タグを見つけてその親の<table>タグを見つける
       if (liText.includes(localResult)) {
         const table = $(element).closest('table');
+
         const pdfLinks: PdfLink[] = [];
 
+        // 見つけた<table>タグの中の<a>タグを見つける
         table.find('a').each((i, el) => {
+          // 見つけた<a>タグのテキストとリンクを取得
           const linkText = $(el).text().trim();
           const linkHref = new URL($(el).attr('href') ?? '', 'https://www.pmda.go.jp').href;
           pdfLinks.push({ text: linkText, href: linkHref });
@@ -86,7 +101,9 @@ export async function POST(req: NextRequest) {
     // クイックレスポンスとして解析結果を一旦返す
     if (matchedContent) {
 
+      // 一時的に解析結果を保存
       processingResults.set(queryKey, matchedContent);
+
       // クライアントに迅速にレスポンスを返す
       // returnをつけて早期にレスポンスを終了させる
       const response = NextResponse.json({ matchedContent }, { headers });
