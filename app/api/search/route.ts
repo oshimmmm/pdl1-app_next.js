@@ -2,6 +2,11 @@ import * as cheerio from 'cheerio';
 import { NextRequest, NextResponse } from 'next/server';
 import pdfParse from 'pdf-parse';
 
+// Axiosのリトライ機能を設定
+import retryAxios from './retryAxios';
+import axiosInstance from 'axios';
+retryAxios(axiosInstance, { maxRetryCount: 3, retryDelay: 1000 });
+
 export interface PdfLink {
   text: string;
   href: string;
@@ -13,10 +18,6 @@ interface MatchedContent {
   pdfLinks: PdfLink[];
 }
 
-// Axiosのリトライ機能を設定
-import retryAxios from './retryAxios';
-import axiosInstance from 'axios';
-retryAxios(axiosInstance, { maxRetryCount: 3, retryDelay: 1000 });
 
 // バックグラウンドでPDF解析を行う関数
 async function processPDFLinks(pdfLinks: PdfLink[]) {
@@ -63,7 +64,7 @@ export async function POST(req: NextRequest) {
   try {
     const { query, localResult } = await req.json();
 
-    // クイックレスポンスのためにHTMLコンテンツの取得と解析を行う
+    // HTMLコンテンツの取得と解析を行う
     const { data } = await axiosInstance.get('https://www.pmda.go.jp/review-services/drug-reviews/review-information/p-drugs/0028.html', {
       params: { q: query }
     });

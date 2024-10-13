@@ -87,11 +87,10 @@ const SearchApp: React.FC = () => {
         <pre className={styles.result}>{localResult}</pre>
       </div>
 
-      {/* 解析中の状態を表示 */}
-      {isProcessing && <p className={styles.processing}>解析中...</p>}
-
       <div>
         <h3 className={styles.title}>詳細:</h3>
+        {/* 解析中の状態を表示 */}
+        {isProcessing && <p className={styles.processing}>解析中...</p>}
         <div className={styles.resultContainer}>
           {apiResult ? (
             <ul className={styles.resultList}>
@@ -107,7 +106,8 @@ const SearchApp: React.FC = () => {
               ))}
             </ul>
           ) : (
-            <pre className={styles.result}>関連する情報が見つかりませんでした</pre>
+            // 解析が終わり、apiResultがnullのままだったら、以下のメッセージ表示
+            isProcessing || apiResult === null ? null : <pre className={styles.result}>関連する情報が見つかりませんでした</pre>
           )}
         </div>
       </div>
