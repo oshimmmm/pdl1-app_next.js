@@ -77,7 +77,7 @@ const SearchApp: React.FC = () => {
         type="text" 
         value={query}
         onChange={handleInputChange}
-        placeholder="クローンを入力してください" 
+        placeholder="PD-L1のクローンを入力してください" 
         className={styles.inputField}
       />
       <button onClick={handleSearch} className={styles.searchButton}>検索</button>
