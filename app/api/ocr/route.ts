@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
 }
 
 async function extractFirstPageAsImage(pdfData: Uint8Array): Promise<string[]> {
-  let images: string[] = [];
+  const images: string[] = [];
 
   try {
     const loadingTask = pdfjsLib.getDocument({ data: pdfData });
