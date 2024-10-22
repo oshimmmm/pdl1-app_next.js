@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
 
     const cheerio = await import('cheerio');
     const $ = cheerio.load(data); // cheerioを使ってHTMLをパース
-    let matchedContent: MatchedContent[] = []; // 複数のdivを扱えるように配列にする
+    const matchedContent: MatchedContent[] = []; // 複数のdivを扱えるように配列にする
     
     // class="cq" の div タグのうち、子の p タグに "PD-L1" を含むものを走査
     $('.cq').each((index, element) => {
@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
       
       if (pTagText.includes('PD-L1')) {
         let currentContent = ""; // 現在の内容を保持する変数
-        let contentArray: string[] = []; // まとめたテキストを保存する配列
+        const contentArray: string[] = []; // まとめたテキストを保存する配列
     
         // div の全ての子要素を走査
         $(element).children().each((i, childElement) => {
