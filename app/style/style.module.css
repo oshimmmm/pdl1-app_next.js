@@ -65,3 +65,27 @@
     text-align: center;
     max-width: 600px;
 }
+
+.preWrapText {
+    white-space: pre-wrap; /* 改行や空白をそのまま表示 */
+    line-height: 1.2; /* 1.5倍の行間 */
+    margin-bottom: -0.5em; /* 行間が大きくなりすぎる場合に調整 */
+}
+
+.matchedContentContainer {
+    margin-bottom: 1.5em; /* 各要素の間にスペースを追加 */
+    padding: 1em;
+    background-color: #f9f9f9; /* 背景色を付けて見やすく */
+    border-radius: 8px; /* 角を丸めて柔らかい印象に */
+  }
+  
+.divider {
+    margin: 2em 0;
+    border: none;
+    border-top: 2px solid #ccc; /* 区切り線を設定 */
+  }
+
+.linkHighlight {
+    font-weight: bold;
+    color: yellowgreen;
+}
