@@ -8,6 +8,7 @@ interface PdfLink {
   text: string;
   href: string;
   pdfContent: string;
+  hasPDL1?: boolean;
 }
 
 interface MatchedContent {
@@ -147,7 +148,7 @@ const SearchApp: React.FC = () => {
               {apiResult.pdfLinks.map((link, index) => (
                 <li key={index} className={styles.resultItem}>
                   {/* PDFリンクをクリック可能にする */}
-                  <a href={link.href} target="_blank" rel="noopener noreferrer" className={styles.link}>
+                  <a href={link.href} target="_blank" rel="noopener noreferrer" className={link.hasPDL1 ? styles.linkHighlight : styles.link}>
                     {link.text}
                   </a>
                   {/* PDFの内容を表示 */}

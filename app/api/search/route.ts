@@ -11,6 +11,7 @@ export interface PdfLink {
   text: string; // PDFリンクの説明テキスト
   href: string; // PDFリンクのURL
   pdfContent?: string; // PDFから抽出した内容（任意）
+  hasPDL1?: boolean; // PD-L1を含むかどうかのフラグ
 }
 
 interface MatchedContent {
@@ -50,6 +51,27 @@ async function processPDFLinks(pdfLinks: PdfLink[]) {
         }
 
         link.pdfContent = pdfContent || '内容が見つかりませんでした'; // 抽出した内容をリンクに追加
+
+
+        // parsedPDFの中で、“投与対象となる患者”という文字列以降に、“PD-L1”という文字列があるかどうか探索し、ある場合は、レスポンスに何か目印を含める。
+        // フロントエンドで、その目印も受け取って、その目印をもつpdfLinksだけ{link.text}を赤色に表示する
+        // “投与対象となる患者”という文字列以降に“PD-L1”という文字列があるか探索
+        // “投与対象となる患者”という文字列の最後の位置を取得し、その後に“PD-L1”という文字列があるか探索
+        const patientKeyword = '投与対象となる患者';
+        let lastPatientIndex = -1;
+        let currentIndex = parsedPdf.text.indexOf(patientKeyword);
+        while (currentIndex !== -1) {
+          lastPatientIndex = currentIndex;
+          currentIndex = parsedPdf.text.indexOf(patientKeyword, currentIndex + 1);
+        }
+
+        if (lastPatientIndex !== -1) {
+          const pdl1Index = parsedPdf.text.indexOf('PD-L1', lastPatientIndex);
+          if (pdl1Index !== -1) {
+            link.hasPDL1 = true; // PD-L1を含む場合はフラグを立てる
+          }
+        }
+
       } catch (error) {
         console.error('PDF解析エラー:', error);
       }
