@@ -22,12 +22,12 @@ const Header = () => {
             >
               PD-L1判定
             </Link>
-            <Link
+            {/* <Link
               className="bg-black py-3 px-4 text-white rounded-md font-medium"
               href="/bbs-posts/create"
             >
               Create Post
-            </Link>
+            </Link> */}
           </nav>
         </div>
       </div>
