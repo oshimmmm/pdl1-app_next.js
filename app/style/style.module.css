@@ -1,7 +1,7 @@
 .container {
     display: flex;
     flex-direction: column;
-    justify-content: center;
+
     align-items: center;
     min-height: 100vh;
     text-align: center;
@@ -12,6 +12,7 @@
     border-radius: 4px; /*角を丸く*/
     padding: 8px;
     width: 300px; /*入力フィールドの幅*/
+    margin: 30px 0;
 }
 
 .searchButton {
@@ -68,8 +69,9 @@
 
 .preWrapText {
     white-space: pre-wrap; /* 改行や空白をそのまま表示 */
-    line-height: 1.2; /* 1.5倍の行間 */
+    line-height: 1.8; /* 1.5倍の行間 */
     margin-bottom: -0.5em; /* 行間が大きくなりすぎる場合に調整 */
+    margin-top: 27px;
 }
 
 .matchedContentContainer {
