@@ -4,24 +4,46 @@ import React, { useState, ChangeEvent } from 'react';
 import ResultDisplay from '../components/Layout/ResultDisplay'; // 再利用可能なコンポーネント
 import styles from '../style/style.module.css';
 import Image from 'next/image';
+import { Card, CardContent, Grid } from "@mui/material";
 
 interface MatchedContent {
   content: string[];
 }
 
+interface ResultItem {
+  type: string;
+  content: MatchedContent[] | string;
+}
+
+
 const MainApp: React.FC = () => {
   const [query, setQuery] = useState<string>(''); 
-  const [haiResult, setHaiResult] = useState<MatchedContent[] | null>(null); 
-  const [shokudoResult, setShokudoResult] = useState<string | null>(null); 
-  const [nyuResult, setNyuResult] = useState<string | null>(null); 
+  const [results, setResults] = useState<ResultItem[]>([]);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
 
   // publicディレクトリの静的ファイルからデータを読み込む関数。
   const fetchShokudoResult = async () => {
     try {
       const response = await fetch('/shokudo-info.txt');
-      const text = await response.text();
-      setShokudoResult(text);
+      return await response.text();
+    }catch (error) {
+      console.error('ファイルの読み込みに失敗しました：', error);
+    }
+  };
+
+  const fetchsikyukeiganResult = async () => {
+    try {
+      const response = await fetch('/sikyukeigan-info.txt');
+      return await response.text();
+    }catch (error) {
+      console.error('ファイルの読み込みに失敗しました：', error);
+    }
+  };
+
+  const fetchmelanomaResult = async () => {
+    try {
+      const response = await fetch('/melanoma-info.txt');
+      return await response.text();
     }catch (error) {
       console.error('ファイルの読み込みに失敗しました：', error);
     }
@@ -30,59 +52,58 @@ const MainApp: React.FC = () => {
   // APIリクエストを送信する関数
   const handleSearch = async () => {
     setIsProcessing(true);
-    setHaiResult(null);
-    setShokudoResult(null);
-    setNyuResult(null);
+    setResults([]);
 
-    const promises: Promise<Response>[] = []; // リクエストを保持する配列
+    const promises: Promise<any>[] = []; // リクエストを保持する配列
 
     // クエリに応じてPOSTリクエストを送るAPIを選択
     if (query === '22C3') {
-      promises.push(fetch('/api/judge', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query }),
-      }));
+      promises.push(fetchShokudoResult().then(data => ({ type: 'shokudoResult', content: data })));
 
-      await fetchShokudoResult();
+      promises.push(fetchsikyukeiganResult().then(data => ({ type: 'sikyukeiganResult', content: data })));
 
       promises.push(fetch('/api/nyuJudge', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query }),
-      }));
+      }).then(res => res.json()).then(data => ({ type: 'nyuResult', content: data.matchedContent })));
+
+      promises.push(fetch('/api/judge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query }),
+      }).then(res => res.json()).then(data => ({ type: 'haiResult', content: data.matchedContent })));
+
 
     } else if (query === 'SP142' || query === 'SP263') {
-      promises.push(fetch('/api/judge', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query }),
-      }));
-
       promises.push(fetch('/api/nyuJudge', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query }),
-      }));
+      }).then(res => res.json()).then(data => ({ type: 'nyuResult', content: data.matchedContent })));
 
-    } else if (query === '28-8') {
       promises.push(fetch('/api/judge', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query }),
-      }));
+      }).then(res => res.json()).then(data => ({ type: 'haiResult', content: data.matchedContent })));
 
-       await fetchShokudoResult();
+
+    } else if (query === '28-8') {
+      promises.push(fetchShokudoResult().then(data => ({ type: 'shokudoResult', content: data })));
+
+      promises.push(fetchmelanomaResult().then(data => ({ type: 'melanomaResult', content: data })));
+
+      promises.push(fetch('/api/judge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query }),
+      }).then(res => res.json()).then(data => ({ type: 'haiResult', content: data.matchedContent })));
     }
 
     try {
-      const responses = await Promise.all(promises); // 複数のリクエストを並行して送信
-      const data = await Promise.all(responses.map((response) => response.json())); // 全てのレスポンスを取得
-      console.log("nyuResult:", nyuResult);
-
-      // 各APIレスポンスをセット
-      if (data[0]) setHaiResult(data[0].matchedContent);
-      if (data[1]) setNyuResult(data[1].matchedContent);
+      const fetchedResults = await Promise.all(promises); // 複数のリクエストを並行して送信
+      setResults(fetchedResults);
     } catch (error) {
       console.error('APIエラー:', error);
     } finally {
@@ -92,7 +113,12 @@ const MainApp: React.FC = () => {
 
   return (
     <div className={styles.container}>
-      <h1>クローン判定</h1>
+      <h1 style={{fontWeight: 'bold', margin: '20px 0', fontSize: '24px'}}>PD-L1判定</h1>
+      <p>PD-L1の各クローンの判定方法は？<br />
+         TPS？CPS？IC？<br />
+         どんな患者に何を使うか？<br />
+         各癌の診療ガイドラインに記載されている内容です。<br />
+      </p>
       <input 
         type="text" 
         value={query}
@@ -105,23 +131,61 @@ const MainApp: React.FC = () => {
       {isProcessing && <p>解析中...</p>}
       
       {/* 結果を表示 */}
-      {haiResult && <ResultDisplay apiResult={haiResult} />}
-      {shokudoResult && (
-        <div>
-        <h2>食道判定</h2>
-        <div className={styles.resultContainer}>
-          <pre className={styles.preWrapText}>
-            {shokudoResult}
-          </pre>
-        </div>
-        </div>
-      )}
-      {nyuResult && (
-        <div className={styles.resultContainer}>
-          <h3>乳癌判定結果</h3>
-          <Image src={nyuResult} alt='乳癌判定' className={styles.resultImage} />
-        </div>
-      )}
+      <Grid container spacing={4} my={2}>
+        {results.map((result, index) => (
+          <Grid item xs={12} md={4} key={index}>
+            <Card>
+              <CardContent>
+                {result.type === 'shokudoResult' && (
+                  <div>
+                    <h2 style={{ fontWeight: 'bold', backgroundColor: '#f0e68c', padding: '10px', borderRadius: '5px' }}>食道判定</h2>
+                    <pre className={styles.preWrapText}>
+                      {result.content as string}
+                    </pre>
+                  </div>
+                )}
+                {result.type === 'sikyukeiganResult' && (
+                  <div>
+                    <h2 style={{ fontWeight: 'bold', backgroundColor: '#f0e68c', padding: '10px', borderRadius: '5px' }}>子宮頸癌判定</h2>
+                    <pre className={styles.preWrapText}>
+                      {result.content as string}
+                    </pre>
+                  </div>
+                )}
+                {result.type === 'melanomaResult' && (
+                  <div>
+                    <h2 style={{ fontWeight: 'bold', backgroundColor: '#f0e68c', padding: '10px', borderRadius: '5px' }}>悪性黒色腫判定</h2>
+                    <pre className={styles.preWrapText}>
+                      {result.content as string}
+                    </pre>
+                  </div>
+                )}
+                {result.type === 'nyuResult' && (
+                  <div style={{ textAlign: 'center' }}>
+                    <h3 style={{ fontWeight: 'bold', backgroundColor: '#f0e68c', padding: '10px', borderRadius: '5px' }}>乳癌判定結果</h3>
+                    <a href={result.content as string} target="_blank" rel="noopener noreferrer">
+                      <Image 
+                        src={result.content as string} 
+                        alt="乳癌判定" 
+                        layout='responsive'
+                        width={500}
+                        height={300}
+                        style={{ width: '100%', height: 'auto' }}
+                      />
+                    </a>
+                  </div>
+                )}
+                {result.type === 'haiResult' && (
+                  <ResultDisplay apiResult={result.content as MatchedContent[]} />
+                )}
+              </CardContent>
+            </Card>
+          </Grid>
+        ))}
+      </Grid>
+      
+      
+      
     </div>
   );
 };
