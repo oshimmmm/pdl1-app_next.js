@@ -114,6 +114,14 @@ const SearchApp: React.FC = () => {
 
   return (
     <div className={styles.container}>
+      <h1 style={{fontWeight: 'bold', margin: '20px 0', fontSize: '24px'}}>PMDA 最適使用ガイドライン</h1>
+
+      <p>PD-L1の各クローンが何の薬剤に関連しているか？<br />
+         その薬剤がどの疾患に対応しているのか？<br />
+         黄緑色の疾患は、投与対象となる患者に、PD-L1が関係している疾患です。<br />
+         <br />
+         ＊処理が重いです。検索後10秒待っても”解析中”の場合は、もう一度検索ボタンを押してください。
+      </p>
       <input 
         type="text" 
         value={query}
@@ -126,7 +134,7 @@ const SearchApp: React.FC = () => {
 
       <div>
         <h3 className={styles.title}>薬剤：</h3>
-        <pre className={styles.result}>{localResult}</pre>
+        <pre style={{fontWeight: 'bold', fontSize: '24px'}}>{localResult}</pre>
       </div>
 
       <div>
