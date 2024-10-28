@@ -28,6 +28,7 @@ const MainApp: React.FC = () => {
       return await response.text();
     }catch (error) {
       console.error('ファイルの読み込みに失敗しました：', error);
+      return ''; // エラーが発生した場合、空文字列を返す
     }
   };
 
@@ -37,6 +38,7 @@ const MainApp: React.FC = () => {
       return await response.text();
     }catch (error) {
       console.error('ファイルの読み込みに失敗しました：', error);
+      return ''; // エラーが発生した場合、空文字列を返す
     }
   };
 
@@ -46,6 +48,7 @@ const MainApp: React.FC = () => {
       return await response.text();
     }catch (error) {
       console.error('ファイルの読み込みに失敗しました：', error);
+      return ''; // エラーが発生した場合、空文字列を返す
     }
   };
   
@@ -54,7 +57,7 @@ const MainApp: React.FC = () => {
     setIsProcessing(true);
     setResults([]);
 
-    const promises: Promise<any>[] = []; // リクエストを保持する配列
+    const promises: Promise<{ type: string; content: string | MatchedContent[] }>[] = []; // リクエストを保持する配列
 
     // クエリに応じてPOSTリクエストを送るAPIを選択
     if (query === '22C3') {
